@@ -1,0 +1,420 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<body bgcolor="#000000">
+
+<canvas id="myCanvas" style='position:absolute; left:0px; top:0px'></canvas>
+	
+	 <script>
+    (function () {
+        var htmlCanvas = document.getElementById('myCanvas'),
+        context = htmlCanvas.getContext('2d');
+       initialize();
+
+       function initialize() {
+
+           window.addEventListener('resize', resizeCanvas, false);
+					 
+           resizeCanvas();
+        }
+
+        function resizeCanvas() {
+            htmlCanvas.width = window.innerWidth;
+            htmlCanvas.height = window.innerHeight;
+        }
+    })();
+
+    </script>
+
+</body>
+
+<style>
+
+body {
+		height: 100%;
+    width: 100%;
+		overflow: hidden;
+	}
+
+myCanvas {
+    padding-left: 0;
+    padding-right: 0;
+    display: block;
+    width: 100%;
+		height: 100%;
+    border: 1px solid blue;
+}
+
+.button {
+    border: none;
+    padding: 20px 70px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    margin: 4px 2px;
+    cursor: pointer;
+		-webkit-transition-duration: 0.4s;
+    transition-duration: 0.4s;
+		position:absolute;
+    top: 45%;
+    left: 43%;
+}
+
+.button1 {border-radius: 6px;}
+
+.button1 {
+    background-color: lightblue; 
+    color: black; 
+    border: 2px solid #4CAF50;
+}
+
+.button1:hover {
+    background-color: #4CAF50;
+    color: white;
+}
+
+</style>
+
+<button class="button button1" onclick="play()">Play</button>
+
+
+
+<script>
+
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+
+//  rand increase of speed 
+var randSpeed = false;
+// leaving false sometimes results in spawning bugs
+var randBounce = true; 
+var bounceFactor = 5;
+var gameOver = false;
+var displayingUI = false;
+var gameState="menu";
+var time = 0;
+// secs before each new block spawn
+var spawnInterval = 3;
+var isRandSpawn = false;
+
+var width = c.width;
+var height = c.height;
+
+var player = {
+   
+hp:100,
+rectWid:16,
+rectHei:16,
+x:0,
+y:0,
+spdX:3,
+spdY:3,
+color:"#551a8b",
+up:false,
+down:false,
+left:false,
+right:false
+}; 
+
+// list of projectiles
+var projlist = {};
+var round = {};
+
+function play() {
+	gameState = 'playing';
+	startTime();
+	console.log("gameState: " + gameState);
+	setInterval(update, 10);
+}
+
+document.onkeydown = function(e) {
+    
+   if(e.keyCode == 40){
+     player.down = true;
+   }
+   if(e.keyCode == 38){
+     player.up = true
+   }
+  if(e.keyCode == 37){
+     player.left = true;
+   }    
+   if(e.keyCode==39){
+     player.right = true;
+   }
+   if (e.keyCode==16) {
+     gameOver=false;
+		 console.log("GameOver: " + gameOver);
+   }
+};
+
+document.onkeyup = function(e) {
+    
+   if(e.keyCode == 40){
+     player.down = false;
+   }
+   if(e.keyCode == 38){
+     player.up = false;
+   }
+   if(e.keyCode == 37){
+     player.left = false;
+   }    
+   if(e.keyCode==39){
+     player.right = false;
+   }
+   if(e.keyCode == 27) {
+		displayingUI = !displayingUI;
+		console.log("displayingUI: " + displayingUI);
+   } 
+
+};
+
+	proj(0, Math.floor(Math.random()*(width-64+1)+64), Math.floor(Math.random()*(height-64+1)+64),
+	 	(Math.random() + .5) * getRandSign(), (Math.random() + 0.5) * getRandSign(), getRandSize(), getRandColor());
+
+function update() {
+	
+	////// PLAYING
+	if(gameState == "playing") {
+	  
+			if(!gameOver) {
+			
+			ctx.clearRect(0,0,c.width,c.height);
+
+					for (var count in projlist) {		
+					
+							if(isRandSpawn) {
+									proj(count++, Math.floor(Math.random()*(width-64+1)+64), Math.floor(Math.random()*(height-64+1)+64),
+	 								(Math.random() + .5) * getRandSign(), (Math.random() + 0.5) * getRandSign(), getRandSize(), getRandColor());
+									 isRandSpawn = false;
+									}
+
+							///////MOVE CHARACTER
+							if(!displayingUI) {
+							
+								if(player.up && player.y > 0) { 
+									player.y -= player.spdY; 
+								}
+								if(player.down && player.y + player.rectHei*2 < height) {
+									player.y += player.spdY;
+								}
+								if(player.left && player.x > 0) {
+									player.x -= player.spdX;
+								}
+								if(player.right && player.x + player.rectWid*2 < width) {
+									player.x += player.spdX;
+								}
+							}
+							setProjColor(projlist[count]);
+							playerIntersects(player, projlist[count]);
+							updateProj(projlist[count]);
+							draw(projlist[count]);
+							}
+						////GAME OVER
+				} else {
+						
+						ctx.font="30px Verdana";
+						// Create gradient
+						var gradient=ctx.createLinearGradient(0,0,c.width,0);
+						gradient.addColorStop("0","magenta");
+						gradient.addColorStop("0.5","blue");
+						gradient.addColorStop("1.0","red");
+						// Fill with gradient
+						ctx.fillStyle=gradient;
+						ctx.fillText("GAME OVER!!!",width/2 - width/2,height/2);
+							
+				}
+		}
+}
+
+function setProjColor(p) {
+	
+}
+
+function updateProj(p) {
+  
+  if(!displayingUI) {
+  
+	  if (p.x < 0) { 
+		  
+		  if(randBounce) {
+			
+		   p.x += Math.random() * bounceFactor;
+		  }
+		
+		  if(randSpeed) {
+			
+			p.spdX -= Math.random();
+		  } 
+		
+		  p.spdX = -p.spdX;   
+	  } // xy{}
+	  
+	  if(p.x + p.rectHei > width) {
+		
+		  if(randBounce) {
+			
+			p.x -= Math.random() * bounceFactor;
+		  }
+		
+		  if(randSpeed) {
+			
+			p.spdX += Math.random();
+		  }
+	 
+		p.spdX = -p.spdX;  
+	  } // xy{}
+	  
+	  if (p.y < 0) { 
+		  
+		  if(randBounce) {
+			
+			p.y += Math.random() * bounceFactor;
+		  }
+		
+		  if(randSpeed) {
+		  
+			p.spdY -= Math.random();
+		  }
+		
+		  p.spdY = -p.spdY; 
+	  } // xy{}
+	  
+	  if(p.y + p.rectHei > height) {
+		  
+		  if(randBounce) {
+			
+			p.y -= Math.random() * bounceFactor;
+		  }
+		
+		  if(randSpeed) {
+			  
+			p.spdY += Math.random();
+		  }
+		
+		 p.spdY = -p.spdY;
+	  }
+
+		p.x += p.spdX;
+		p.y += p.spdY;
+	  
+  }
+}
+
+function draw(p) {
+
+  ctx.fillRect(p.x, p.y, p.rectWid, p.rectHei);
+  ctx.fillStyle= player.color;
+  ctx.fillRect(player.x, player.y, 30, 30);
+  
+  if(displayingUI) {
+			displayUI();
+		}
+
+} // xy{}
+
+function getDistance(entity1, entity2) {
+  var dist1 = entity1.x - entity2.x;
+  var dist2 = entity1.y - entity2.y;
+  
+  return Math.sqrt((dist1 * dist1) + (dist2 * dist2));
+}
+
+function isCollision(ent1, ent2) {
+  return 30 > getDistance(ent1,ent2);
+}
+
+function playerIntersects(rect1, rect2) {
+  
+    if (rect1.x < rect2.x + rect2.rectWid &&
+     rect1.x + rect1.rectWid > rect2.x &&
+     rect1.y < rect2.y + rect2.rectHei &&
+     rect1.rectHei + rect1.y > rect2.y) {
+
+     gameOver = true;
+     
+    }
+  
+}
+
+function giveImmunity() {
+  
+  player.hp -= 1;
+  console.log(player.hp);
+   
+}
+
+function displayUI() {
+ // background
+ctx.fillStyle="#551a8b";
+ctx.fillRect(width/2-width/4, height/2-height/4, 150, 200);
+ctx.stroke();
+// border
+ctx.beginPath();
+ctx.fillStyle="#000000";
+ctx.lineWidth=4;
+ctx.rect(width/2-width/4, height/2-height/4, 150, 200);
+ctx.stroke();
+ctx.closePath();
+  
+}
+
+function startTime() {
+	setInterval(function() {
+	time++;
+
+	console.log("time: " + time);
+
+	if(time % spawnInterval == 0) {
+		isRandSpawn = true;
+	}
+	}, 1000);
+}
+
+function getRandColor() {
+	return '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+}
+
+function getRandSize() {
+		if(Math.random() > 0.5) {
+			return 32;
+		} else {
+			return 16;
+		}
+}
+
+function getRandSign() {
+
+	if(Math.random() > 0.5) {
+		return -1;
+	} else {
+		return 1;
+	}
+}
+
+// call this function with given parems to make a new proj
+function proj(id, x, y, spdX, spdY, Siz, color) {
+  
+  var proj = {
+    x:x,
+    y:y,
+    spdX:spdX,
+    spdY:spdY,
+    rectWid:Siz,
+    rectHei:Siz,
+    id:id,
+		color:color
+  };
+  projlist[id] = proj;
+}
+
+// projlist[count].momentum = projlist[count].rectHei * 
+//         projlist[count].rectWid * Math.max
+//         (projlist[count].spdX, projlist[count].spdY);
+
+</script>
+
+
+
+</html>
